@@ -6,3 +6,8 @@ libraries/libraries/util.jar
 products/DicomAnonymizerTool-installer.jar
 libraries/libraries/dicom-pixel-anonymizer.script
 libraries/libraries/imageio/
+libraries/CTP.jar
+libraries/dcm4che.jar
+libraries/libraries/pixelmed_codec.jar
+libraries/pixelmed_codec.jar
+libraries/util.jar
