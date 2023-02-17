@@ -434,6 +434,7 @@ public class DicomAnonymizerTool {
 										}
 										inFile = outFile;
 										ok = true;
+										outFile = status.getFile();
 									}
 									else {
 										sb.append("   Aborting the processing of this file.\n");
