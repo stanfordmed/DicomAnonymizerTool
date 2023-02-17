@@ -1,0 +1,8 @@
+documentation/
+build/
+libraries/libraries/CTP.jar
+libraries/libraries/dcm4che.jar
+libraries/libraries/util.jar
+products/DicomAnonymizerTool-installer.jar
+libraries/libraries/dicom-pixel-anonymizer.script
+libraries/libraries/imageio/
