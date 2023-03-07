@@ -106,7 +106,7 @@ public class DicomAnonymizerTool {
 			checkConfig();
 			System.exit(0);
 		}
-		
+
 		Hashtable<String,String> argsTable = new Hashtable<String,String>();
 		String switchName = null;
 		for (String arg : args) {
@@ -168,9 +168,8 @@ public class DicomAnonymizerTool {
 			if (outFile.exists() && outFile.isFile()) {
 				System.out.println("Output path ("+path+") exists but it is not a directory.");
 				System.exit(0);
-			}
-			if (outFileNameFormat == null)			
-				outFile.mkdirs();
+			}	
+			outFile.mkdirs();
 		}
 		
 		File filterScriptFile = new File("dicom-filter.script");
@@ -243,7 +242,7 @@ public class DicomAnonymizerTool {
 				check, 
 				maxThreads, 
 				verbose);
-		anonymizer.go(inFile, outFile, outFileNameFormat, useOutputFileNameFormat);
+		anonymizer.go(inFile, outFile, new File(argsTable.get("-out")), outFileNameFormat, useOutputFileNameFormat);
 	}
 	
 	public File filterScriptFile;
@@ -262,6 +261,7 @@ public class DicomAnonymizerTool {
 	final LinkedBlockingQueue<Runnable> queue;
 	long startTime = 0;
 	boolean allQueued = false;
+	List<File> outFilesToClean = new ArrayList<>();
 
 	public DicomAnonymizerTool(
 			File filterScriptFile, 
@@ -309,29 +309,34 @@ public class DicomAnonymizerTool {
 		execSvc = new ThreadPoolExecutor( maxThreads, maxThreads, 0L, TimeUnit.MILLISECONDS, queue );
 	}
 	
-	public void go(File inFile, File outFile, String outFileFormat, boolean useOutputFileNameFormat) {
+	public void go(File inFile, File outFile, File outParentPath, String outFileFormat, boolean useOutputFileNameFormat) {
 		startTime = System.currentTimeMillis();
 		// If the inFile is a file and if outFile is supplied, we will use it
-		anonymize(inFile, outFile, outFileFormat, useOutputFileNameFormat);
+		anonymize(inFile, outFile, outParentPath, outFileFormat, useOutputFileNameFormat);
 		allQueued = true;
 	}
 	
-	public void anonymize(File inFile, File outFile, String outFileFormat, boolean useOutputFileNameFormat) { 
+	public void anonymize(File inFile, File outFile, File outParentPath, String outFileFormat, boolean useOutputFileNameFormat) { 
 		if (inFile.isFile()) {
 			outFileFormat = useOutputFileNameFormat ? outFileFormat : null;
-			execSvc.execute( new Processor(inFile, outFile, outFileFormat, this) );
+			execSvc.execute( new Processor(inFile, outFile, outParentPath, outFileFormat, this) );
 		}
 		else {
-			useOutputFileNameFormat = true;
+			useOutputFileNameFormat = true;			
 			File[] files = inFile.listFiles();
 			for (File file : files) {
 				if (file.isDirectory()) {
 					File dir = new File(outFile, file.getName());
 					dir.mkdirs();
-					anonymize(file, dir, outFileFormat, useOutputFileNameFormat);
+					anonymize(file, dir, outParentPath, outFileFormat, useOutputFileNameFormat);
+					if ( outFileFormat != null ) // Keep track of outFile if it's going to get renamed, so that we can delete it later 
+						outFilesToClean.add(dir);
 				}
 				else {
-					anonymize(file, new File(outFile, file.getName()), outFileFormat, useOutputFileNameFormat);
+					File fileToBeProccessed = new File(outFile, file.getName());
+					anonymize(file, fileToBeProccessed, outParentPath, outFileFormat, useOutputFileNameFormat);
+					if ( outFileFormat != null ) // Keep track of outFile if it's going to get renamed, so that we can delete it later
+						outFilesToClean.add(fileToBeProccessed); 
 				}
 			}
 		}
@@ -343,18 +348,26 @@ public class DicomAnonymizerTool {
 			long endTime = System.currentTimeMillis();
 			double elapsedTime = ((double)(endTime - startTime))/1000.;
 			System.out.println(String.format("----\nElapsed time: %.3f",elapsedTime));
+			for (File file : outFilesToClean) {
+				if (file.exists()) {
+					System.out.println("Cleaning up " + file.getAbsolutePath() );
+					file.delete();
+				}
+			}
 			System.exit(0);
 		}
 	}
 	
 	class Processor extends Thread {
+		File outParentPath;
 		File inFile;
 		File outFile;
 		String outFileFormat;
 		DicomAnonymizerTool parent;
 		
-		public Processor(File inFile, File outFile, String outFileFormat, DicomAnonymizerTool parent) {
+		public Processor(File inFile, File outFile, File outParentPath, String outFileFormat, DicomAnonymizerTool parent) {
 			super();
+			this.outParentPath = outParentPath;
 			this.inFile = inFile;
 			this.outFile = outFile;
 			this.parent = parent;
@@ -437,9 +450,9 @@ public class DicomAnonymizerTool {
 										outFile = status.getFile();
 									}
 									else {
-										sb.append("   Aborting the processing of this file.\n");
-										parent.notify(sb.toString());
-										return;
+											sb.append("   Aborting the processing of this file.\n");
+											parent.notify(sb.toString());
+											return;
 									}
 								}
 							}
@@ -457,7 +470,7 @@ public class DicomAnonymizerTool {
 					IntegerTable intTable = null;
 					System.out.println("Output file names will have fomrat : " + outFileFormat);
 					AnonymizerStatus status =
-								DICOMAnonymizer.anonymize(inFile, outFile, daScriptProps, lutProps, intTable, false, false, outFileFormat);
+								DICOMAnonymizer.anonymize(inFile, outFile, daScriptProps, lutProps, intTable, false, false, outParentPath, outFileFormat);
 					if (verbose || !status.isOK()) sb.append("   The DICOMAnonymizer returned "+status.getStatus()+".\n");
 					if (status.isOK()) {
 						ok = true;
@@ -494,14 +507,14 @@ public class DicomAnonymizerTool {
 								}
 							}
 						}
-						catch (Exception ex) { 
+						catch (Throwable ex) { 
 							sb.append("   Frame checking failed.");
 						}
 					}
 				}
 				else sb.append("   Anonymization failed.\n");
 			}
-			catch (Exception ex) {
+			catch (Throwable ex) {
 				ex.printStackTrace();
 				System.exit(0);
 			}
