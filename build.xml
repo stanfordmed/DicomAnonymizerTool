@@ -26,6 +26,9 @@
 	</path>
 
 	<target name="init">
+		<echo message="=================================================="/>
+		<echo message="Building ${ant.project.name}"/>
+		<echo message="=================================================="/>
 		<tstamp>
 			<format property="today" pattern="yyyy.MM.dd"/>
 			<format property="now" pattern="HH:mm:ss z"/>
@@ -48,13 +51,11 @@
 				<include name="dcm4che.jar"/>
 				<include name="log4j.jar"/>
 				<include name="util.jar"/>
+				<include name="slf4j-api-1.6.1.jar"/>
+				<include name="slf4j-log4j12-1.6.1.jar"/>
 			</fileset>
 		</copy>
 		<copy overwrite="true" todir="${libraries}/imageio">
-			<fileset dir="${ctp}/libraries">
-				<include name="pixelmed_codec.jar"/>
-				<include name="dcm4che-imageio-rle-2.0.25.jar"/>
-			</fileset>
 			<fileset dir="${ctp}/libraries/imageio">
 				<include name="**"/>
 			</fileset>
@@ -86,13 +87,13 @@
 libraries/log4j.jar 
 libraries/CTP.jar 
 libraries/util.jar 
+libraries/slf4j-api-1.6.1.jar
+libraries/slf4j-log4j12-1.6.1.jar
 imageio/clibwrapper_jiio-1.2-pre-dr-b04.jar
 imageio/dcm4che-imageio-rle-2.0.25.jar
 imageio/jai_imageio-1.2-pre-dr-b04.jar
 imageio/pixelmed_codec.jar
 imageio/pixelmed_imageio.jar
-imageio/slf4j-api-1.6.1.jar
-imageio/slf4j-log4j12-1.6.1.jar
 imageio/twelvemonkeys-common-image-3.6-SNAPSHOT.jar
 imageio/twelvemonkeys-common-io-3.6-SNAPSHOT.jar
 imageio/twelvemonkeys-common-lang-3.6-SNAPSHOT.jar
